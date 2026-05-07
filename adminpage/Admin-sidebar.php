@@ -44,8 +44,11 @@
 
     <div class="sidebar-section">Account</div>
 
-    <a href="/HungryWheels/logout.php" class="nav-item text-red-400/70 hover:text-red-400 hover:bg-red-400/8">
-        <span class="icon">🚪</span> Logout
-    </a>
+        <a href="Admin-profile.php" class="nav-item <?= $current === 'Admin-profile.php' ? 'active' : '' ?>">
+            <span class="icon">👤</span> My Profile
+        </a>
 
+        <a href="/HungryWheels/logout.php" class="nav-item text-red-400/70 hover:text-red-400 hover:bg-red-400/8">
+            <span class="icon">🚪</span> Logout
+        </a>
 </div>

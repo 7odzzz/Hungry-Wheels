@@ -277,7 +277,7 @@ $revenue  = $pdo->query("SELECT SUM(total_price) FROM orders")->fetchColumn();
 
             <!-- Status filter pills -->
             <div class="flex gap-2 overflow-x-auto pb-2 mb-5">
-                <a href="orders.php<?= $search ? '?search='.urlencode($search) : '' ?>"
+                <a href="AdminOrders.php<?= $search ? '?search='.urlencode($search) : '' ?>"
                    class="filter-pill <?= $status_filter === '' ? 'active' : '' ?>">All</a>
                 <a href="?status=pending<?= $search ? '&search='.urlencode($search) : '' ?>"
                    class="filter-pill <?= $status_filter === 'pending' ? 'active' : '' ?>">🕐 Pending</a>
@@ -329,9 +329,9 @@ $revenue  = $pdo->query("SELECT SUM(total_price) FROM orders")->fetchColumn();
                                 <?php if ($order['is_elite_discount']): ?>
                                     <span class="text-xs bg-amber-400/15 text-amber-400 border border-amber-400/25 px-2 py-0.5 rounded-full">⭐ Elite</span>
                                 <?php endif; ?>
-                                <span class="syne font-800 text-white"><?= number_format($order['total_price'], 0) ?> <span class="text-xs font-400 text-slate-400">EGP</span></span>
-                                <span class="text-xs font-700 px-2.5 py-1 rounded-full border <?= $s['bg'] ?> <?= $s['color'] ?>">
-                                    <?= $s['icon'] ?> <?= $s['label'] ?>
+                                    <span class="syne font-800 text-white"><?= number_format($order['total_price'], 0) ?> <span class="text-xs font-400 text-slate-400">EGP</span></span>
+                                    <span class="text-xs font-700 px-2.5 py-1 rounded-full border <?= $s['bg'] ?> <?= $s['color'] ?>">
+                                        <?= $s['icon'] ?> <?= $s['label'] ?>
                                 </span>
                             </div>
                         </div>

@@ -1,0 +1,36 @@
+# Database connection
+db.php
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Cache
+cache/
+tmp/
+
+# Uploaded files
+uploads/
+
+# Node packages
+node_modules/
+
+# Vendor packages
+vendor/
+
+#secret/auth file
+auth_guard.php  
+
+#admin file
+adminpage/dmfd.php
+
+#theme files
+theme.css
+theme.js
+
+
+# OS files
+.DS_Store
+Thumbs.db

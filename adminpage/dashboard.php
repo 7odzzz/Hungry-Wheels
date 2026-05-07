@@ -1,9 +1,9 @@
 <?php
-session_start();
-if (!isset($_SESSION["admin_id"])) {
-    header("Location: /HungryWheels/login.php");
-    exit();
-}
+session_start();           //    only if auth_guard.php isn't included first
+require_once('../auth_guard.php');
+guard('admin');             // redirects if not logged in
+inject_bfcache_killer();
+
 require '../db.php';
 
 // Stats
@@ -29,6 +29,8 @@ $status_config = [
     'delivered'  => ['label'=>'Delivered',  'color'=>'text-green-400',  'bg'=>'bg-green-400/10  border-green-400/30',  'icon'=>'✅'],
 ];
 ?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -140,14 +142,23 @@ $status_config = [
                 🔐 <span>Admin Panel</span>
             </a>
         </div>
+                <!--avatar bar-->
         <div class="flex items-center gap-3">
-            <span class="hidden sm:inline text-xs font-700 px-3 py-1 rounded-full syne"
-                style="background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff">
-                👑 Admin
-            </span>
-            <div class="avatar w-9 h-9 rounded-full flex items-center justify-center text-sm text-white font-700">
-                <?= strtoupper(substr($_SESSION["admin_name"], 0, 1)) ?>
-            </div>
+    <span class="hidden sm:inline text-xs font-700 px-3 py-1 rounded-full syne"
+        style="background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff">
+        👑 Admin
+    </span>
+    
+    <a href="Admin-profile.php" class="flex items-center gap-2 hover:opacity-80 transition group">
+        <div class="avatar w-9 h-9 rounded-full flex items-center justify-center text-sm text-white font-700">
+            <?= strtoupper(substr($_SESSION["admin_name"], 0, 1)) ?>
+        </div>
+        <span class="hidden sm:inline text-sm text-slate-300 group-hover:text-purple-400 transition syne font-600">
+            <?= htmlspecialchars($_SESSION["admin_name"]) ?>
+        </span>
+    </a>
+</div>
+            
         </div>
     </div>
 </nav>
@@ -199,7 +210,10 @@ $status_config = [
                     <span class="text-slate-500 text-xs font-600 uppercase tracking-wide">Revenue</span>
                     <span class="text-2xl">💰</span>
                 </div>
-                <div class="syne text-3xl font-800 text-green-400"><?= number_format($total_revenue ?? 0, 0) ?></div>
+            <div class="text-3xl font-bold text-green-400" 
+                style="font-family: 'DM Sans', sans-serif;">
+                <?= number_format($total_revenue ?? 0, 0) ?>
+            </div>
                 <div class="text-slate-500 text-xs mt-1">EGP total</div>
             </div>
             <div class="stat-card" style="animation-delay:0.21s">
@@ -241,7 +255,7 @@ $status_config = [
         <div class="card p-6">
             <div class="flex items-center justify-between mb-5">
                 <h3 class="syne font-800 text-white text-lg">Recent Orders</h3>
-                <a href="orders.php" class="text-purple-400 hover:underline text-sm">View all →</a>
+                <a href="AdminOrders.php" class="text-purple-400 hover:underline text-sm">View all →</a>
             </div>
             <?php if (empty($recent_orders)): ?>
                 <div class="text-center py-10 text-slate-500">No orders yet</div>

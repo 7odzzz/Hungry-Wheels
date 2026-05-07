@@ -70,9 +70,7 @@ $current = basename($_SERVER['PHP_SELF']);
         <span class="icon">👤</span> Profile
     </a>
 
-    <a href="profile.php#address" class="nav-item">
-        <span class="icon">📍</span> My Addresses
-    </a>
+    
 
     <a href="profile.php#subscription" class="nav-item">
         <span class="icon">⭐</span>
@@ -82,17 +80,15 @@ $current = basename($_SERVER['PHP_SELF']);
         <?php endif; ?>
     </a>
 
-    <div class="sidebar-section">Support</div>
+        <div class="sidebar-section">Support</div>
 
-    <a href="#" class="nav-item">
-        <span class="icon">❓</span> Help & FAQ
-    </a>
+        <a href="help.php" class="nav-item <?= $current === 'help.php' ? 'active' : '' ?>">
+            <span class="icon">❓</span> Help & FAQ
+        </a>
 
-    <a href="#" class="nav-item">
-        <span class="icon">💬</span> Contact Us
-    </a>
-
-    <!-- Logout at bottom -->
+        
+    
+        <!-- Logout at bottom -->
     <div class="mt-6 pt-4 border-t border-slate-800">
         <a href=" /HungryWheels/logout.php" class="nav-item text-red-400/70 hover:text-red-400 hover:bg-red-400/8">
             <span class="icon">🚪</span> Logout

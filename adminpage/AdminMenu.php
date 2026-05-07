@@ -22,25 +22,24 @@ if (isset($_GET['delete'])) {
 
 // ── ADD or EDIT ───────────────────────────────────────────
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $id          = intval($_POST['id'] ?? 0);
-    $name        = trim($_POST['name']);
-    $description = trim($_POST['description']);
-    $price       = floatval($_POST['price']);
-    $category    = trim($_POST['category']);
+    $id           = intval($_POST['id'] ?? 0);
+    $name         = trim($_POST['name']);
+    $description  = trim($_POST['description']);
+    $price        = floatval($_POST['price']);
+    $category     = trim($_POST['category']);
+    $image_url    = trim($_POST['image_url'] ?? '');
     $is_available = isset($_POST['is_available']) ? 1 : 0;
 
     if (empty($name) || empty($category) || $price <= 0) {
         $error = "Please fill in all required fields.";
     } else {
         if ($id > 0) {
-            // Edit
-            $stmt = $pdo->prepare("UPDATE menu_items SET name=?, description=?, price=?, category=?, is_available=? WHERE id=?");
-            $stmt->execute([$name, $description, $price, $category, $is_available, $id]);
+            $stmt = $pdo->prepare("UPDATE menu_items SET name=?, description=?, price=?, category=?, image_url=?, is_available=? WHERE id=?");
+            $stmt->execute([$name, $description, $price, $category, $image_url, $is_available, $id]);
             $success = "Item updated successfully.";
         } else {
-            // Add
-            $stmt = $pdo->prepare("INSERT INTO menu_items (name, description, price, category, is_available) VALUES (?,?,?,?,?)");
-            $stmt->execute([$name, $description, $price, $category, $is_available]);
+            $stmt = $pdo->prepare("INSERT INTO menu_items (name, description, price, category, image_url, is_available) VALUES (?,?,?,?,?,?)");
+            $stmt->execute([$name, $description, $price, $category, $image_url, $is_available]);
             $success = "Item added successfully.";
         }
     }
@@ -67,16 +66,12 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Group by category
 $menu = [];
 foreach ($items as $item) {
     $menu[$item['category']][] = $item;
 }
 
-// Fetch categories for datalist
-$categories = $pdo->query("SELECT DISTINCT category FROM menu_items ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
-
-// Stats
+$categories      = $pdo->query("SELECT DISTINCT category FROM menu_items ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
 $total_items     = $pdo->query("SELECT COUNT(*) FROM menu_items")->fetchColumn();
 $available_items = $pdo->query("SELECT COUNT(*) FROM menu_items WHERE is_available = 1")->fetchColumn();
 $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items")->fetchColumn();
@@ -89,8 +84,6 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
     <title>Menu Management — Hungry Wheels</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-    
-    
     <style>
         * { font-family: 'DM Sans', sans-serif; }
         h1,h2,h3,h4,.syne { font-family: 'Syne', sans-serif; }
@@ -103,8 +96,7 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
         .sidebar {
             background: rgba(14,20,32,0.95);
             border-right: 1px solid rgba(51,65,85,0.4);
-            width: 260px;
-            min-height: calc(100vh - 64px);
+            width: 260px; min-height: calc(100vh - 64px);
             position: sticky; top: 64px;
             height: calc(100vh - 64px);
             overflow-y: auto; flex-shrink: 0;
@@ -153,6 +145,8 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
             border-color: #a855f7;
             box-shadow: 0 0 0 3px rgba(168,85,247,0.12);
         }
+        .form-input.valid   { border-color: #4ade80; }
+        .form-input.invalid { border-color: #f87171; }
         textarea.form-input { resize: vertical; min-height: 80px; }
         label {
             display: block; font-size: 13px;
@@ -209,13 +203,55 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
             gap: 12px; transition: all 0.2s;
             animation: fadeUp 0.3s ease both;
         }
-        .item-row:hover {
-            border-color: rgba(168,85,247,0.25);
-        }
+        .item-row:hover { border-color: rgba(168,85,247,0.25); }
         @keyframes fadeUp {
             from { opacity:0; transform:translateY(12px); }
             to   { opacity:1; transform:translateY(0); }
         }
+
+        /* ── Image preview box ── */
+        #img-preview-wrap {
+            width: 100%; border-radius: 12px; overflow: hidden;
+            background: rgba(15,23,42,0.8);
+            border: 1.5px dashed rgba(51,65,85,0.6);
+            transition: all 0.3s; margin-bottom: 4px;
+        }
+        #img-preview-wrap.has-image {
+            border-style: solid;
+            border-color: #4ade80;
+        }
+        #img-preview-wrap.has-error {
+            border-color: #f87171;
+        }
+        #img-preview {
+            width: 100%; height: 160px; object-fit: cover;
+            display: none;
+        }
+        #img-placeholder {
+            height: 100px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 6px; color: #475569; font-size: 13px;
+        }
+        #img-status {
+            font-size: 12px; font-weight: 600;
+            padding: 4px 10px; border-radius: 6px;
+            display: none; margin-top: 6px;
+        }
+        #img-status.valid   { background: rgba(74,222,128,0.1); color: #4ade80; display: block; }
+        #img-status.invalid { background: rgba(248,113,113,0.1); color: #f87171; display: block; }
+        #img-status.loading { background: rgba(168,85,247,0.1);  color: #a855f7; display: block; }
+
+        /* Item row thumbnail */
+        .item-thumb {
+            width: 40px; height: 40px; border-radius: 8px;
+            object-fit: cover; flex-shrink: 0;
+            background: rgba(30,41,59,0.8);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; overflow: hidden;
+        }
+        .item-thumb img { width:100%; height:100%; object-fit:cover; }
+
         #sidebar-overlay {
             display:none; position:fixed; inset:0;
             background:rgba(0,0,0,0.6); z-index:40; backdrop-filter:blur(2px);
@@ -238,7 +274,7 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
         ::-webkit-scrollbar-track { background: #080d14; }
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
 
-        /* Modal */
+        /* Delete modal */
         #confirm-modal {
             display: none; position: fixed; inset: 0;
             background: rgba(0,0,0,0.7); z-index: 100;
@@ -253,8 +289,6 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
             max-width: 380px; width: 90%; text-align: center;
         }
     </style>
-
-
 </head>
 <body class="min-h-screen text-slate-200">
 <div class="bg-glow"></div>
@@ -266,7 +300,7 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
         <h3 class="syne text-lg font-800 text-white mb-2">Delete Item?</h3>
         <p class="text-slate-400 text-sm mb-6">This action cannot be undone.</p>
         <div class="flex gap-3 justify-center">
-            <button onclick="closeModal()" class="px-5 py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700 transition text-sm font-600">Cancel</button>
+            <button onclick="closeDeleteModal()" class="px-5 py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700 transition text-sm font-600">Cancel</button>
             <a id="confirm-delete-btn" href="#" class="px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white transition text-sm font-700">Delete</a>
         </div>
     </div>
@@ -306,7 +340,6 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
         <?php include 'Admin-sidebar.php'; ?>
     </aside>
 
-    <!-- MAIN -->
     <main class="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-8">
         <div class="max-w-6xl mx-auto">
 
@@ -316,22 +349,14 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
                     <h2 class="syne text-3xl font-800 text-white mb-1">Menu Management</h2>
                     <p class="text-slate-400 text-sm">Add, edit or remove menu items</p>
                 </div>
-                <button onclick="openForm()"
-                    class="btn-purple flex items-center gap-2">
-                    ➕ Add Item
-                </button>
+                <button onclick="openForm()" class="btn-purple flex items-center gap-2">➕ Add Item</button>
             </div>
 
-            <!-- Success / Error -->
             <?php if ($success): ?>
-                <div class="bg-green-400/10 border border-green-400/30 text-green-400 px-4 py-3 rounded-xl text-sm font-600 mb-5">
-                    ✅ <?= htmlspecialchars($success) ?>
-                </div>
+                <div class="bg-green-400/10 border border-green-400/30 text-green-400 px-4 py-3 rounded-xl text-sm font-600 mb-5">✅ <?= htmlspecialchars($success) ?></div>
             <?php endif; ?>
             <?php if ($error): ?>
-                <div class="bg-red-400/10 border border-red-400/30 text-red-400 px-4 py-3 rounded-xl text-sm font-600 mb-5">
-                    ❌ <?= htmlspecialchars($error) ?>
-                </div>
+                <div class="bg-red-400/10 border border-red-400/30 text-red-400 px-4 py-3 rounded-xl text-sm font-600 mb-5">❌ <?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
 
             <!-- Stats -->
@@ -352,16 +377,14 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                <!-- ADD / EDIT FORM -->
+                <!-- ── ADD / EDIT FORM ── -->
                 <div class="lg:col-span-1">
                     <div class="card p-5" id="item-form-card">
-                        
-                    <h3 class="syne font-800 text-white mb-4" id="form-title">
+                        <h3 class="syne font-800 text-white mb-4" id="form-title">
                             <?= $edit_item ? '✏️ Edit Item' : '➕ Add New Item' ?>
-                    
                         </h3>
-                    
-                        <form method="POST" action="" id="item-form">
+
+                        <form method="POST" action="" id="item-form" onsubmit="return validateForm()">
                             <input type="hidden" name="id" id="form-id"
                                 value="<?= $edit_item ? $edit_item['id'] : 0 ?>">
 
@@ -375,8 +398,7 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
                             <div class="mb-3">
                                 <label>Category *</label>
                                 <input type="text" name="category" class="form-input"
-                                    placeholder="e.g. Burgers"
-                                    list="cat-list"
+                                    placeholder="e.g. Burgers" list="cat-list"
                                     value="<?= $edit_item ? htmlspecialchars($edit_item['category']) : '' ?>" required>
                                 <datalist id="cat-list">
                                     <?php foreach ($categories as $cat): ?>
@@ -392,11 +414,39 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
                                     value="<?= $edit_item ? $edit_item['price'] : '' ?>" required>
                             </div>
 
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label>Description</label>
                                 <textarea name="description" class="form-input"
                                     placeholder="Short description of the item..."><?= $edit_item ? htmlspecialchars($edit_item['description']) : '' ?></textarea>
                             </div>
+
+                            <!-- ── IMAGE URL FIELD ── -->
+                            <div class="mb-4">
+                                <label>Image URL <span class="text-slate-600 font-400">(optional)</span></label>
+
+                                <!-- Preview box -->
+                                <div id="img-preview-wrap">
+                                    <div id="img-placeholder">
+                                        <span style="font-size:28px">🖼️</span>
+                                        <span>Paste an image URL to preview</span>
+                                    </div>
+                                    <img id="img-preview" alt="Item preview">
+                                </div>
+
+                                <!-- Status badge -->
+                                <div id="img-status"></div>
+
+                                <!-- Input -->
+                                <input type="url" name="image_url" id="image_url_input"
+                                    class="form-input mt-2"
+                                    placeholder="https://example.com/image.jpg"
+                                    value="<?= $edit_item ? htmlspecialchars($edit_item['image_url'] ?? '') : '' ?>">
+
+                                <p class="text-slate-600 text-xs mt-1.5">
+                                    Tip: right-click any image on the web → "Copy image address"
+                                </p>
+                            </div>
+                            <!-- ── END IMAGE URL FIELD ── -->
 
                             <div class="mb-5 flex items-center gap-3">
                                 <input type="checkbox" name="is_available" id="is_available"
@@ -410,19 +460,15 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
                                     <?= $edit_item ? 'Save Changes' : 'Add Item' ?>
                                 </button>
                                 <?php if ($edit_item): ?>
-                                    <a href="AdminMenu.php" class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-400 hover:bg-slate-700 transition text-sm font-600 flex items-center">
-                                        Cancel
-                                    </a>
+                                    <a href="AdminMenu.php" class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-400 hover:bg-slate-700 transition text-sm font-600 flex items-center">Cancel</a>
                                 <?php endif; ?>
                             </div>
                         </form>
                     </div>
                 </div>
 
-                <!-- ITEMS LIST -->
+                <!-- ── ITEMS LIST ── -->
                 <div class="lg:col-span-2">
-
-                    <!-- Search -->
                     <form method="GET" action="" class="mb-4">
                         <div class="relative">
                             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -443,10 +489,25 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
                         <div class="space-y-5">
                             <?php foreach ($menu as $category => $cat_items): ?>
                                 <div>
-                                    <div class="cat-heading"><?= htmlspecialchars($category) ?> <span class="text-slate-600 text-xs font-400">(<?= count($cat_items) ?>)</span></div>
+                                    <div class="cat-heading">
+                                        <?= htmlspecialchars($category) ?>
+                                        <span class="text-slate-600 text-xs font-400">(<?= count($cat_items) ?>)</span>
+                                    </div>
                                     <div class="space-y-2">
                                         <?php foreach ($cat_items as $i => $item): ?>
                                             <div class="item-row" style="animation-delay:<?= $i * 0.04 ?>s">
+
+                                                <!-- Thumbnail -->
+                                                <div class="item-thumb flex-shrink-0">
+                                                    <?php if (!empty($item['image_url'])): ?>
+                                                        <img src="<?= htmlspecialchars($item['image_url']) ?>"
+                                                             alt="<?= htmlspecialchars($item['name']) ?>"
+                                                             onerror="this.parentElement.textContent='🍽️'">
+                                                    <?php else: ?>
+                                                        🍽️
+                                                    <?php endif; ?>
+                                                </div>
+
                                                 <!-- Availability dot -->
                                                 <div class="w-2 h-2 rounded-full flex-shrink-0 <?= $item['is_available'] ? 'bg-green-400' : 'bg-red-400' ?>"></div>
 
@@ -464,8 +525,7 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
                                                 <!-- Actions -->
                                                 <div class="flex gap-2 flex-shrink-0">
                                                     <a href="AdminMenu.php?edit=<?= $item['id'] ?>" class="btn-edit">✏️ Edit</a>
-                                                    <button onclick="confirmDelete(<?= $item['id'] ?>, '<?= addslashes($item['name']) ?>')"
-                                                        class="btn-red">🗑️ Delete</button>
+                                                    <button onclick="confirmDelete(<?= $item['id'] ?>, '<?= addslashes($item['name']) ?>')" class="btn-red">🗑️ Del</button>
                                                 </div>
                                             </div>
                                         <?php endforeach; ?>
@@ -475,37 +535,136 @@ $total_cats      = $pdo->query("SELECT COUNT(DISTINCT category) FROM menu_items"
                         </div>
                     <?php endif; ?>
                 </div>
-            </div>
 
+            </div>
         </div>
     </main>
 </div>
 
 <script>
+// ── Sidebar ────────────────────────────────────────────────
 function toggleSidebar() {
     document.getElementById('mobile-sidebar').classList.toggle('open');
     document.getElementById('sidebar-overlay').classList.toggle('open');
 }
 
-// Auto open form if edit mode
-<?php if ($edit_item || isset($_GET['action']) && $_GET['action'] === 'add'): ?>
-document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-<?php endif; ?>
-
-// Delete confirm modal
+// ── Delete modal ───────────────────────────────────────────
 function confirmDelete(id, name) {
     document.getElementById('confirm-delete-btn').href = 'AdminMenu.php?delete=' + id;
     document.getElementById('confirm-modal').classList.add('open');
 }
-function closeModal() {
+function closeDeleteModal() {
     document.getElementById('confirm-modal').classList.remove('open');
 }
 
-// Open form (scroll to it on mobile)
+// ── Open form ──────────────────────────────────────────────
 function openForm() {
     document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
     document.querySelector('[name="name"]').focus();
 }
+<?php if ($edit_item || (isset($_GET['action']) && $_GET['action'] === 'add')): ?>
+document.getElementById('item-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+<?php endif; ?>
+
+// ── Image URL preview & validation ────────────────────────
+const imgInput    = document.getElementById('image_url_input');
+const imgPreview  = document.getElementById('img-preview');
+const imgWrap     = document.getElementById('img-preview-wrap');
+const imgHolder   = document.getElementById('img-placeholder');
+const imgStatus   = document.getElementById('img-status');
+
+let validationTimer = null;
+let currentUrl = '';
+
+function resetPreview() {
+    imgPreview.style.display = 'none';
+    imgPreview.src = '';
+    imgHolder.style.display = 'flex';
+    imgWrap.className = '';
+    imgWrap.id = 'img-preview-wrap';
+    imgStatus.className = '';
+    imgStatus.textContent = '';
+    imgInput.classList.remove('valid', 'invalid');
+}
+
+function showLoading() {
+    imgStatus.className = 'loading';
+    imgStatus.textContent = '⏳ Checking image…';
+}
+
+function showValid() {
+    imgHolder.style.display  = 'none';
+    imgPreview.style.display = 'block';
+    imgWrap.classList.add('has-image');
+    imgStatus.className  = 'valid';
+    imgStatus.textContent = '✅ Image loaded successfully';
+    imgInput.classList.add('valid');
+    imgInput.classList.remove('invalid');
+}
+
+function showInvalid(msg) {
+    imgPreview.style.display = 'none';
+    imgHolder.style.display  = 'flex';
+    imgWrap.classList.add('has-error');
+    imgStatus.className  = 'invalid';
+    imgStatus.textContent = '❌ ' + (msg || 'Could not load image — check the URL');
+    imgInput.classList.add('invalid');
+    imgInput.classList.remove('valid');
+}
+
+function validateImageUrl(url) {
+    if (!url || url.trim() === '') { resetPreview(); return; }
+
+    // Basic URL check
+    try { new URL(url); } catch(e) { showInvalid('Not a valid URL'); return; }
+
+    showLoading();
+    currentUrl = url;
+
+    // Load the image into a hidden element to test it
+    const tester = new Image();
+    tester.onload = function() {
+        if (url !== currentUrl) return; // stale response
+        imgPreview.src = url;
+        showValid();
+    };
+    tester.onerror = function() {
+        if (url !== currentUrl) return;
+        showInvalid('Could not load image — check the URL');
+    };
+    tester.src = url;
+}
+
+// Debounce: wait 600ms after user stops typing
+imgInput.addEventListener('input', function() {
+    clearTimeout(validationTimer);
+    const url = this.value.trim();
+    if (!url) { resetPreview(); return; }
+    showLoading();
+    validationTimer = setTimeout(() => validateImageUrl(url), 600);
+});
+
+// Also fire on paste immediately (after a tiny delay so value is set)
+imgInput.addEventListener('paste', function() {
+    clearTimeout(validationTimer);
+    setTimeout(() => validateImageUrl(this.value.trim()), 100);
+});
+
+// Validate on form submit — block if URL typed but image failed
+function validateForm() {
+    const url = imgInput.value.trim();
+    if (url && imgInput.classList.contains('invalid')) {
+        imgInput.focus();
+        imgStatus.textContent = '❌ Fix the image URL or clear the field before saving';
+        return false;
+    }
+    return true;
+}
+
+// ── If editing, load existing image URL immediately ────────
+<?php if ($edit_item && !empty($edit_item['image_url'])): ?>
+validateImageUrl(<?= json_encode($edit_item['image_url']) ?>);
+<?php endif; ?>
 </script>
 
 </body>
