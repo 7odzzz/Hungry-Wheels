@@ -355,6 +355,91 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     </div>
                 </form>
             </div>
+                            <!--showing points and wallets in profile-->
+                            <?php
+// Fetch fresh user data for points and wallet
+$pts_stmt = $pdo->prepare("SELECT current_points, total_points_earned, wallet_balance FROM users WHERE id = ?");
+$pts_stmt->execute([$_SESSION["user_id"]]);
+$pts_data = $pts_stmt->fetch(PDO::FETCH_ASSOC);
+
+$milestones_map = [
+    200  => ['wallet' => 25,   'label' => '25 EGP bonus'],
+    500  => ['wallet' => 75,   'label' => '75 EGP bonus'],
+    1000 => ['wallet' => 150,  'label' => '150 EGP bonus'],
+    2000 => ['wallet' => 300,  'label' => '300 EGP bonus + Elite'],
+    5000 => ['wallet' => 1000, 'label' => '1000 EGP bonus + Elite'],
+];
+
+// Get claimed milestones
+$claimed_stmt = $pdo->prepare("SELECT milestone FROM reward_claims WHERE user_id = ?");
+$claimed_stmt->execute([$_SESSION["user_id"]]);
+$claimed = array_column($claimed_stmt->fetchAll(PDO::FETCH_ASSOC), 'milestone');
+?>
+
+<!-- Wallet card -->
+<div class="card p-6">
+    <div class="flex items-center gap-3 mb-4">
+        <span class="text-2xl">💰</span>
+        <h3 class="syne font-800 text-white text-lg">Wallet Balance</h3>
+    </div>
+    <div class="syne text-4xl font-800 text-green-400 mb-1">
+        <?= number_format($pts_data['wallet_balance'], 2) ?> EGP
+    </div>
+    <p class="text-slate-500 text-sm">Available to use at checkout</p>
+</div>
+
+<!-- Points card -->
+<div class="card p-6">
+    <div class="flex items-center gap-3 mb-5">
+        <span class="text-2xl">⭐</span>
+        <h3 class="syne font-800 text-white text-lg">Reward Points</h3>
+    </div>
+
+    <!-- Points stats -->
+    <div class="grid grid-cols-2 gap-3 mb-5">
+        <div class="stat-card text-center">
+            <div class="syne text-2xl font-800 text-sky-400"><?= $pts_data['current_points'] ?></div>
+            <div class="text-slate-500 text-xs mt-1">Current Points</div>
+        </div>
+        <div class="stat-card text-center">
+            <div class="syne text-2xl font-800 text-indigo-400"><?= $pts_data['total_points_earned'] ?></div>
+            <div class="text-slate-500 text-xs mt-1">Lifetime Earned</div>
+        </div>
+    </div>
+
+    <!-- Milestone progress -->
+    <div class="space-y-3">
+        <?php foreach ($milestones_map as $pts => $reward): 
+            $done     = in_array($pts, $claimed);
+            $progress = min(100, round(($pts_data['total_points_earned'] / $pts) * 100));
+        ?>
+        <div class="p-3 rounded-xl <?= $done ? 'bg-green-400/8 border border-green-400/20' : 'bg-slate-800/40 border border-slate-700/40' ?>">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-600 <?= $done ? 'text-green-400' : 'text-slate-300' ?>">
+                    <?= $done ? '✅' : '🎯' ?> <?= $pts ?> pts — <?= $reward['label'] ?>
+                </span>
+                <?php if ($done): ?>
+                    <span class="text-xs text-green-400 font-700">Claimed!</span>
+                <?php else: ?>
+                    <span class="text-xs text-slate-500"><?= $pts_data['total_points_earned'] ?>/<?= $pts ?></span>
+                <?php endif; ?>
+            </div>
+            <?php if (!$done): ?>
+            <div style="background:rgba(30,41,59,0.8);border-radius:999px;height:5px;overflow:hidden;">
+                <div style="width:<?= $progress ?>%;height:100%;background:linear-gradient(90deg,#38bdf8,#6366f1);border-radius:999px;"></div>
+            </div>
+            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
+    <p class="text-slate-600 text-xs mt-4">
+        💡 Earn 25 points for every order over 1000 EGP. Points never expire.
+    </p>
+</div>
+
+
+
 
             <!-- Elite subscription card -->
             <div id="subscription" class="card elite-card <?= $is_elite ? 'active' : '' ?> p-6">
@@ -408,6 +493,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             <p class="text-slate-500 text-xs">Cancel anytime from your profile</p>
                             <button type="submit" class="btn-elite-subscribe">⭐ Subscribe for 100 EGP/mo</button>
                         </div>
+    
                     </form>
                 <?php endif; ?>
             </div>

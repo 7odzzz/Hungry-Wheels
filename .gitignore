@@ -1,0 +1,31 @@
+# Dependencies / vendor
+vendor/
+
+# Environment files (VERY important)
+.env
+
+# Logs
+*.log
+
+# Cache
+cache/
+tmp/
+
+# Node (if you use it)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# PHP specific
+*.cache
+
+#MAILER FILE
+mailer.php
+
+# Ignore entire src folder
+src/
+
+# specific admin files
+adminpage/dmfd.php
